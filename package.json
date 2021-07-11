@@ -1,0 +1,28 @@
+{
+  "name": "chatndo",
+  "version": "1.0.0",
+  "description": "real time collaboration tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev-start": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KostisPoly/ChatnDo.git"
+  },
+  "author": "KostisPoly",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KostisPoly/ChatnDo/issues"
+  },
+  "homepage": "https://github.com/KostisPoly/ChatnDo#readme",
+  "dependencies": {
+    "express": "^4.17.1",
+    "moment": "^2.29.1",
+    "socket.io": "^4.1.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12"
+  }
+}
