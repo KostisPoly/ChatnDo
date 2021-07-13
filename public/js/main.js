@@ -1,5 +1,3 @@
-const socket = io();
-
 //FROM TEMPLATE
 $(function() {
     'use strict';
