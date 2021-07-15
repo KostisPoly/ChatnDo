@@ -22,11 +22,18 @@ const mysqlConn = mysql.createConnection({
 const port = process.env.PORT || 3000;
 const auto = 'Auto';
 
-app.use(session({
+//Make session obj to middlware func and pass to both app and io
+const sessionMiddleware = session({
 	secret: 'secret',
 	resave: true,
 	saveUninitialized: true
-}));
+});
+
+io.use( (socket, next) => {
+    sessionMiddleware(socket.request, socket.request.res || {}, next);
+});
+
+app.use(sessionMiddleware);
 
 app.use(bodyParser.urlencoded({extended : true}));
 app.use(bodyParser.json());
@@ -39,35 +46,41 @@ app.get('/', (request, response) => {
 });
 app.post('/auth', (request, response) => {
     //TEST DATA
-    const email = 'test@email.test';
-    const password = '123456';
-    request.session.loggedin = true;
-    request.session.user = {
-        name: "Kotsarikos"
-    };
-    response.redirect('/home');
+    // const email = 'test@email.test';
+    // const password = '123456';
+    // request.session.loggedin = true;
+    // request.session.user = {
+    //     name: "Kotsarikos"
+    // };
+    // response.redirect('/home');
     //TEST DATA END
     
-    // const email = request.body.email;
-    // const email = request.body.email;
+    const email = request.body.email;
+    const password = request.body.password;
     
-    // if(email && password) {
-    //     mysqlConn.query('SELECT * FROM accounts WHERE email = ? AND password = ?',
-    //         [email, password], 
-    //         (error, results, fields) => {
-    //             if (results.length > 0) {
-    //                 request.session.loggedin = true;
-    //                 request.session.user = results.user;
-    //                 response.redirect('/home');
-    //             } else {
-    //                 response.send('Incorrect Credentials');
-    //             }			
-    //             response.end();
-    //         });
-    // } else {
-    //     response.send('Please enter Email and Password!');
-	// 	response.end();
-    // }
+    if(email && password) {
+        mysqlConn.query('SELECT * FROM accounts WHERE email = ? AND password = ?',
+            [email, password], 
+            (error, results, fields) => {
+                if (results.length > 0) {
+                    const user = JSON.parse(JSON.stringify(results));
+                    request.session.loggedin = true;
+                    request.session.user = user;
+                    response.redirect('/home');
+                    mysqlConn.query('UPDATE accounts SET online = ? WHERE id = ?',
+                        [1, user[0].id],
+                        (error, results, fields) => {
+                            console.log(results);
+                        })
+                } else {
+                    response.send('Incorrect Credentials');
+                }			
+                response.end();
+            });
+    } else {
+        response.send('Please enter Email and Password!');
+		response.end();
+    }
 })
 app.get('/home', (request, response) => {
     
@@ -82,10 +95,11 @@ app.get('/home', (request, response) => {
 });
 //Socket Listeners
 io.on('connection', socket => {
-
+    console.log(socket.request.session);
     socket.broadcast.emit('message', messageFormat(auto, 'User --- Connected'));
     //Listen to disconnect from client
     socket.on('disconnect', () => {
+        console.log("Disconected user");
         io.emit('message', messageFormat(auto, 'User --- disconnected'));
     });
 
