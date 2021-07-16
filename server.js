@@ -45,15 +45,6 @@ app.get('/', (request, response) => {
 	response.sendFile(__dirname + '/public/index.html');
 });
 app.post('/auth', (request, response) => {
-    //TEST DATA
-    // const email = 'test@email.test';
-    // const password = '123456';
-    // request.session.loggedin = true;
-    // request.session.user = {
-    //     name: "Kotsarikos"
-    // };
-    // response.redirect('/home');
-    //TEST DATA END
     
     const email = request.body.email;
     const password = request.body.password;
