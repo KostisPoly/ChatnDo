@@ -20,7 +20,7 @@ const mysqlConn = mysql.createConnection({
 });
 
 const port = process.env.PORT || 3000;
-const auto = 'Auto';
+const bot = 'Bot';
 
 //Make session obj to middlware func and pass to both app and io
 const sessionMiddleware = session({
@@ -63,12 +63,12 @@ app.post('/auth', (request, response) => {
             [email, password], 
             (error, results, fields) => {
                 if (results.length > 0) {
-                    const user = JSON.parse(JSON.stringify(results));
+                    const user = JSON.parse(JSON.stringify(results[0]));
                     request.session.loggedin = true;
                     request.session.user = user;
                     response.redirect('/home');
                     mysqlConn.query('UPDATE accounts SET online = ? WHERE id = ?',
-                        [1, user[0].id],
+                        [1, user.id],
                         (error, results, fields) => {
                             console.log(results);
                         })
@@ -95,17 +95,21 @@ app.get('/home', (request, response) => {
 });
 //Socket Listeners
 io.on('connection', socket => {
-    console.log(socket.request.session);
-    socket.broadcast.emit('message', messageFormat(auto, 'User --- Connected'));
+
+    const sessionIo = JSON.parse(JSON.stringify(socket.request.session));
+    const user = sessionIo.user;
+
+    socket.broadcast.emit('message', messageFormat(bot, `${user.username} has Connected`));
+
     //Listen to disconnect from client
     socket.on('disconnect', () => {
         console.log("Disconected user");
-        io.emit('message', messageFormat(auto, 'User --- disconnected'));
+        io.emit('message', messageFormat(user, `${user.username} has Disconnected`));
     });
 
     //Listen to message from client
     socket.on('message', msg => {
-        io.emit('message', messageFormat('current user', msg));
+        io.emit('message', messageFormat(user, msg));
     })
 });
 
