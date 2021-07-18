@@ -26,3 +26,22 @@ $(function() {
 
 });
 //END FROM TEMPLATE
+
+//Set interval update online user
+function updateUser(){
+    console.log("CALL UPDATE USER");
+    $.ajax({
+    url: '/update-user',
+    type: 'get',
+    success: function(response){
+        console.log(response);
+    },
+    error: function(error) {
+        console.log(error);
+    }
+    });
+}
+
+$(document).ready(function(){
+    setInterval(updateUser,15000);
+});

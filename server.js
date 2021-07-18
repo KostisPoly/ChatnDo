@@ -4,8 +4,10 @@ const express = require('express');
 const socketio = require('socket.io')
 const mysql = require('mysql')
 const session = require('express-session')
+const sharedSession = require('express-socket.io-session')
 const bodyParser = require('body-parser')
-const {messageFormat} = require('./globals')
+const moment = require('moment');
+const {messageFormat, intervalCheck} = require('./globals');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,15 +27,51 @@ const bot = 'Bot';
 //Make session obj to middlware func and pass to both app and io
 const sessionMiddleware = session({
 	secret: 'secret',
-	resave: true,
-	saveUninitialized: true
-});
-
-io.use( (socket, next) => {
-    sessionMiddleware(socket.request, socket.request.res || {}, next);
+    resave: true,
+    saveUninitialized: true
 });
 
 app.use(sessionMiddleware);
+
+io.use(sharedSession(sessionMiddleware));
+
+io.on('connection', socket => {
+    console.log("on Connect Io");
+    //console.log(socket.handshake.session);
+    // const sessionIo = JSON.parse(JSON.stringify(socket.request.session));
+    //console.log(socket.handshake.session);
+    const user = socket.handshake.session.user;
+    socket.handshake.session.save();
+    if(user) {
+        io.on("login", user => {
+            socket.handshake.session.user = user;
+            socket.handshake.session.save();
+        });
+        //const user = socket.handshake.session.user;
+        socket.on('disconnect', () => {
+            console.log("Disconected user");
+            console.log(socket.handshake.session);
+            if (!user) {
+                console.log("NO USER IN SESSION");
+            }
+            io.emit('message', messageFormat(user, `${user.username} has Disconnected`));
+        });
+    
+        //Listen to message from client
+        socket.on('message', msg => {
+            io.emit('message', messageFormat(user, msg));
+        })
+    }else{
+        console.log("CONNECTION USER NOT PRESENT");
+    }
+    
+});
+
+//Test IO to REQUEST APP
+app.use((req, res, next) => {
+    req.io = io;
+    return next();
+});
 
 app.use(bodyParser.urlencoded({extended : true}));
 app.use(bodyParser.json());
@@ -44,8 +82,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (request, response) => {
 	response.sendFile(__dirname + '/public/index.html');
 });
+
 app.post('/auth', (request, response) => {
-    
     const email = request.body.email;
     const password = request.body.password;
     
@@ -73,35 +111,38 @@ app.post('/auth', (request, response) => {
 		response.end();
     }
 })
+
 app.get('/home', (request, response) => {
-    
+    //console.log(request.session);
 	if (request.session.loggedin) {
-		//response.send('Welcome back, ' + request.session.user.name + '!');
         response.sendFile(path.join(__dirname, 'public/home.html'));
 	} else {
-		//response.send('Please login to view this page!');
-        response.sendFile(path.join(__dirname, 'public/index.html'));
+        response.redirect('/');
 	}
-	// response.end();
 });
-//Socket Listeners
-io.on('connection', socket => {
 
-    const sessionIo = JSON.parse(JSON.stringify(socket.request.session));
-    const user = sessionIo.user;
-
-    socket.broadcast.emit('message', messageFormat(bot, `${user.username} has Connected`));
-
-    //Listen to disconnect from client
-    socket.on('disconnect', () => {
-        console.log("Disconected user");
-        io.emit('message', messageFormat(user, `${user.username} has Disconnected`));
-    });
-
-    //Listen to message from client
-    socket.on('message', msg => {
-        io.emit('message', messageFormat(user, msg));
-    })
+app.get('/chat', (request, response) => {
+    console.log("on Chat route");
+    console.log(request.session);
+	if (request.session.loggedin) {
+        response.sendFile(path.join(__dirname, 'public/chat.html'));
+	} else {
+        response.redirect('/');
+	}
 });
+
+app.get('/update-user', (request, response) => {
+    if(request.session.user) {
+        const timestamp = moment().format('YYYY-MM-DD HH:mm:ss');
+        mysqlConn.query('UPDATE accounts SET online = ?, timestamp = ? WHERE id = ?',
+        [1, timestamp, request.session.user.id],
+        (error, results, fields) => {
+            console.log(results);
+        })
+    }
+    
+});
+
+intervalCheck();
 
 server.listen(port, () => console.log(`listening on http://localhost:${port}`));

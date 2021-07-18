@@ -19,6 +19,6 @@ chatForm.addEventListener('submit', (e) => {
 function printMessage(msg) {
     const divElem = document.createElement('div');
     divElem.classList.add('message');
-    divElem.innerHTML = `<p class='info'>${msg.user} -- ${msg.time}</p><p class='text'>${msg.text}</p>`;
+    divElem.innerHTML = `<p class='info'>${msg.user.username} -- ${msg.time}</p><p class='text'>${msg.text}</p>`;
     chatBoard.appendChild(divElem);
 }
